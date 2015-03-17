@@ -1,5 +1,6 @@
 package ru.tumbler.androidrobot;
 
+import android.content.Intent;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -14,7 +15,9 @@ import org.androidannotations.annotations.ViewById;
 @EActivity(R.layout.activity_launcher)
 public class LauncherActivity extends ActionBarActivity {
     @Click(R.id.btnCar)
-    void launchCarActivity() {};
+    void launchCarActivity() {
+        startActivity(new Intent(this, CarActivity_.class));
+    };
 
     @Click(R.id.btnRemote)
     void launchRemoteControlActivity() {};
