@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.EActivity;
+import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 
 import ru.tumbler.androidrobot.service.RobotService;
@@ -23,6 +24,7 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
     TextView mConsole;
     private boolean mIsBound;
 
+    @UiThread
     public void log(String message) {
         if (mConsole == null)
             return;

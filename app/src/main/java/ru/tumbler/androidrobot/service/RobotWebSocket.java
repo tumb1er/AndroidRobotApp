@@ -10,7 +10,7 @@ import com.koushikdutta.async.http.WebSocket;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 
-public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback {
+public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback, CompletedCallback, WebSocket.StringCallback, DataCallback {
     private WebSocket mWebSocket = null;
     private IRobot mRobot = null;
 
@@ -24,40 +24,9 @@ public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback 
             mWebSocket.close();
 
         mWebSocket = webSocket;
-        //Use this to clean up any references to your websocket
-        mWebSocket.setClosedCallback(new CompletedCallback() {
-            @Override
-            public void onCompleted(Exception ex) {
-                try {
-                    if (ex != null) {
-                        Log.e("WebSocket", "Error:" + String.valueOf(ex));
-                        Log.e("WebSocket",  Log.getStackTraceString(ex));
-                    }
-                } finally {
-                    mWebSocket = null;
-                }
-            }
-        });
-
-        mWebSocket.setStringCallback(new WebSocket.StringCallback() {
-            @Override
-            public void onStringAvailable(String s) {
-                if ("Hello Server".equals(s)) {
-                    webSocket.send("Welcome Client!");
-                    return;
-                }
-                String result = mRobot.send(s);
-                if (result != null)
-                    webSocket.send(result);
-            }
-        });
-
-        mWebSocket.setDataCallback(new DataCallback() {
-            @Override
-            public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
-                bb.recycle();
-            }
-        });
+        mWebSocket.setClosedCallback(this);
+        mWebSocket.setStringCallback(this);
+        mWebSocket.setDataCallback(this);
 
     }
 
@@ -71,5 +40,33 @@ public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback 
             mWebSocket.send("server stopped");
             mWebSocket.close();
         }
+    }
+
+    @Override
+    public void onCompleted(Exception ex) {
+        try {
+            if (ex != null) {
+                Log.e("WebSocket", "Error:" + String.valueOf(ex));
+                Log.e("WebSocket",  Log.getStackTraceString(ex));
+            }
+        } finally {
+            mWebSocket = null;
+        }
+    }
+
+    @Override
+    public void onStringAvailable(String s) {
+        if ("Hello Server".equals(s)) {
+            mWebSocket.send("Welcome Client!");
+            return;
+        }
+        String result = mRobot.send(s);
+        if (result != null)
+            mWebSocket.send(result);
+    }
+
+    @Override
+    public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
+        bb.recycle();
     }
 }
