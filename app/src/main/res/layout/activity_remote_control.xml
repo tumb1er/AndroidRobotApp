@@ -10,8 +10,8 @@
         android:layout_height="wrap_content"
         android:id="@+id/textView"
         android:background="#FFFFFF"
-        android:minLines="3"
-        android:maxLines="3" />
+        android:minLines="5"
+        android:maxLines="5" />
 
     <ru.tumbler.androidrobot.remote.DrawView
         android:layout_width="fill_parent"
