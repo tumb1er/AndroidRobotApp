@@ -34,7 +34,7 @@ import ru.tumbler.androidrobot.R;
 @WindowFeature({ Window.FEATURE_NO_TITLE})
 @Fullscreen
 @EActivity(R.layout.activity_remote_control)
-public class RemoteControlActivity extends Activity {
+public class RemoteControlActivity extends Activity implements WebSocket.StringCallback, DataCallback, CompletedCallback, AsyncHttpClient.WebSocketConnectCallback {
 
     @ViewById(R.id.surfaceView)
     DrawView mSurfaceView;
@@ -163,53 +163,7 @@ public class RemoteControlActivity extends Activity {
     }
 
     public void startWebSocket() {
-        AsyncHttpClient.getDefaultInstance().websocket(mServiceUri, null, new AsyncHttpClient.WebSocketConnectCallback() {
-            @Override
-            public void onCompleted(Exception ex, WebSocket webSocket) {
-                onWSCompleted(ex, webSocket);
-            }
-        });
-    }
-
-    private void onWSCompleted(Exception ex, WebSocket webSocket) {
-        if (ex != null) {
-            ex.printStackTrace();
-            if (mWebSocket != null) {
-                mWebSocket.close();
-                mWebSocket = null;
-            }
-            return;
-        }
-        mWebSocket = webSocket;
-        webSocket.send("Connect to: " + android.os.Build.MODEL);
-        webSocket.setStringCallback(new WebSocket.StringCallback() {
-            public void onStringAvailable(final String s) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        updateReceivedData(s);
-                    }
-                });
-            }
-        });
-        webSocket.setDataCallback(new DataCallback() {
-            @Override
-            public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
-                bb.recycle();
-            }
-        });
-        webSocket.setClosedCallback(new CompletedCallback() {
-            @Override
-            public void onCompleted(Exception ex) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        updateReceivedData("WS closed");
-                    }
-                });
-                mWebSocket = null;
-            }
-        });
+        AsyncHttpClient.getDefaultInstance().websocket(mServiceUri, null, this);
     }
 
     private void updateReceivedData(String data) {
@@ -225,4 +179,35 @@ public class RemoteControlActivity extends Activity {
         mConsole.setText(builder.toString());
     }
 
+    public void onStringAvailable(final String s) {
+        log(s);
+    }
+
+    @Override
+    public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
+        bb.recycle();
+    }
+
+    @Override
+    public void onCompleted(Exception ex) {
+        log("WS closed");
+        mWebSocket = null;
+    }
+
+    @Override
+    public void onCompleted(Exception ex, WebSocket webSocket) {
+        if (ex != null) {
+            ex.printStackTrace();
+            if (mWebSocket != null) {
+                mWebSocket.close();
+                mWebSocket = null;
+            }
+            return;
+        }
+        mWebSocket = webSocket;
+        webSocket.send("Connect to: " + android.os.Build.MODEL);
+        webSocket.setStringCallback(this);
+        webSocket.setDataCallback(this);
+        webSocket.setClosedCallback(this);
+    }
 }
