@@ -31,10 +31,11 @@ import java.util.List;
 
 import ru.tumbler.androidrobot.R;
 
-@WindowFeature({ Window.FEATURE_NO_TITLE})
 @Fullscreen
+@WindowFeature({ Window.FEATURE_NO_TITLE})
 @EActivity(R.layout.activity_remote_control)
-public class RemoteControlActivity extends Activity implements WebSocket.StringCallback, DataCallback, CompletedCallback, AsyncHttpClient.WebSocketConnectCallback {
+public class RemoteControlActivity extends Activity implements WebSocket.StringCallback,
+        DataCallback, CompletedCallback, AsyncHttpClient.WebSocketConnectCallback {
 
     @ViewById(R.id.surfaceView)
     DrawView mSurfaceView;
@@ -53,7 +54,6 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
 
     @SystemService
     protected NsdManager mNsdManager;
-    private NsdServiceInfo mService;
 
     @Override
     protected void onStop() {
@@ -86,7 +86,6 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
                         serviceInfo.getServiceName(),
                         host.getHostAddress(),
                         port));
-                mService = serviceInfo;
                 mServiceUri = "http://" + host.getHostAddress() + ":" + String.valueOf(port) + "/ws";
                 startWebSocket();
             }
@@ -179,6 +178,7 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
         mConsole.setText(builder.toString());
     }
 
+    @Override
     public void onStringAvailable(final String s) {
         log(s);
     }
