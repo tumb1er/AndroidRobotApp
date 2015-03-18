@@ -1,0 +1,23 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <TextView android:text="@string/hello_world"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/textView"
+        android:background="#FFFFFF"
+        android:minLines="3"
+        android:maxLines="3" />
+
+    <ru.tumbler.androidrobot.remote.DrawView
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/surfaceView"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true" />
+
+</LinearLayout>

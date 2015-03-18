@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="ru.tumbler.androidrobot" >
 
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        android:required="true" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -22,7 +27,7 @@
         </activity>
 
         <service
-            android:name="ru.tumbler.androidrobot.service.RobotService_"
+            android:name=".service.RobotService_"
             android:enabled="true"
             android:exported="false" >
             <intent-filter>
@@ -32,8 +37,14 @@
             <meta-data
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
-
         </service>
+
+        <activity
+            android:name=".remote.RemoteControlActivity_"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:label="@string/title_activity_remote_control"
+            android:theme="@style/FullscreenTheme" >
+        </activity>
     </application>
 
 </manifest>
