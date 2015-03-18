@@ -1,14 +1,13 @@
 package ru.tumbler.androidrobot.service;
 
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import org.androidannotations.annotations.Background;
 import org.androidannotations.annotations.EService;
 import org.apache.http.conn.util.InetAddressUtils;
 
@@ -17,14 +16,17 @@ import java.net.NetworkInterface;
 import java.util.Collections;
 import java.util.List;
 
+import ru.tumbler.androidrobot.connection.NetworkDiscovery;
+
 @EService
 public class RobotService extends Service implements IRobot {
 
     private static final String LOG_TAG = RobotService.class.getName();
     public static final int WS_PORT = 8080;
     public static final String SERVICE_NAME = "RobotWebSocket";
-    public static final String SERVICE_TYPE = "_http._tcp.";
+    public static final String SERVICE_TYPE = "_http._tcp.robot.";
     private final RobotWebSocketServer ws;
+    private NetworkDiscovery mNetworkDiscovery;
 
     public interface LogListener {
         void log(String message);
@@ -33,10 +35,6 @@ public class RobotService extends Service implements IRobot {
     private LogListener mLogListener;
 
     private final IBinder mBinder = new RobotBinder();
-
-    private NsdManager.RegistrationListener mRegistrationListener;
-    private NsdManager mNsdManager;
-
 
     public RobotService() {
         ws = new RobotWebSocketServer(this);
@@ -51,6 +49,8 @@ public class RobotService extends Service implements IRobot {
 
     @Override
     public IBinder onBind(Intent intent) {
+
+        Log.d(LOG_TAG, "onBind");
         return mBinder;
     }
 
@@ -61,11 +61,14 @@ public class RobotService extends Service implements IRobot {
 
     public void setLogListener(LogListener listener) {
         mLogListener = listener;
+        if (mNetworkDiscovery!= null)
+            log("Service: listening " + mNetworkDiscovery.getServerInfo());
     }
 
     void log(String message) {
+        Log.d(LOG_TAG, message);
         if (mLogListener!=null)
-            mLogListener.log(message);
+            mLogListener.log("Service: " + message);
     }
 
     @Override
@@ -73,15 +76,17 @@ public class RobotService extends Service implements IRobot {
         Log.i(LOG_TAG, "onCreate");
         super.onCreate();
         startServer();
-        initializeRegistrationListener();
         registerService(WS_PORT);
     }
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
+        Log.i(LOG_TAG, "onCreate");
         stopServer();
-        mNsdManager.unregisterService(mRegistrationListener);
+        if (mNetworkDiscovery != null) {
+            mNetworkDiscovery.reset();
+        }
+        super.onDestroy();
     }
 
     private void stopServer() {
@@ -92,10 +97,9 @@ public class RobotService extends Service implements IRobot {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.i(LOG_TAG, "onStartCommand");
         log("Received start id " + startId + ": " + intent);
-        // We want this service to continue running until it is explicitly
-        // stopped, so return sticky.
-        return START_STICKY;
+        return super.onStartCommand(intent, flags, startId);
     }
 
     private void startServer() {
@@ -131,59 +135,23 @@ public class RobotService extends Service implements IRobot {
         return "";
     }
 
-    public void initializeRegistrationListener() {
-        mRegistrationListener = new NsdManager.RegistrationListener() {
-
-            @Override
-            public void onServiceRegistered(NsdServiceInfo serviceInfo) {
-                // Save the service name.  Android may have changed it in order to
-                // resolve a conflict, so update the name you initially requested
-                // with the name Android actually used.
-                InetAddress host = serviceInfo.getHost();
-                int port = serviceInfo.getPort();
-                log(String.format("Service registered: %s at %s:%d",
-                        serviceInfo.getServiceName(),
-                        (host != null) ? host.getHostAddress() : getIPAddress(true),
-                        (port > 0)? port : WS_PORT));
-            }
-
-            @Override
-            public void onRegistrationFailed(NsdServiceInfo serviceInfo, int errorCode) {
-                // Registration failed!  Put debugging code here to determine why.
-                log("onRegistrationFailed");
-            }
-
-            @Override
-            public void onServiceUnregistered(NsdServiceInfo arg0) {
-                // Service has been unregistered.  This only happens when you call
-                // NsdManager.unregisterService() and pass in this listener.
-                log("onServiceUnregistered");
-                stopServer();
-            }
-
-            @Override
-            public void onUnregistrationFailed(NsdServiceInfo serviceInfo, int errorCode) {
-                // Unregistration failed.  Put debugging code here to determine why.
-                log("onUnregistrationFailed");
-            }
-        };
+    private void logServiceInfo(NsdServiceInfo serviceInfo) {
+        InetAddress host = serviceInfo.getHost();
+        int port = serviceInfo.getPort();
+        log(String.format("Service registered: %s at %s:%d",
+                serviceInfo.getServiceName(),
+                (host != null) ? host.getHostAddress() : getIPAddress(true),
+                (port > 0)? port : WS_PORT));
     }
 
-    public void registerService(int port) {
-        log("start service registration");
-        // Create the NsdServiceInfo object, and populate it.
-        NsdServiceInfo serviceInfo  = new NsdServiceInfo();
 
-        // The name is subject to change based on conflicts
-        // with other services advertised on the same network.
-        serviceInfo.setServiceName(SERVICE_NAME);
-        serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(port);
-
-        mNsdManager = (NsdManager)getSystemService(Context.NSD_SERVICE);
-
-        mNsdManager.registerService(
-                serviceInfo, NsdManager.PROTOCOL_DNS_SD, mRegistrationListener);
+    @Background
+    void registerService(int port) {
+        log("Service: init service registration");
+        mNetworkDiscovery = new NetworkDiscovery(this);
+        log("Service: start service registration");
+        mNetworkDiscovery.startServer(port);
+        log("Service: listening " + mNetworkDiscovery.getServerInfo());
     }
 
 }

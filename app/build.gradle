@@ -52,4 +52,6 @@ dependencies {
     compile 'com.android.support:appcompat-v7:21.0.3'
     compile 'com.koushikdutta.async:androidasync:2.+'
     compile 'com.android.support:support-v4:21.0.3'
+
+    compile files('libs/jmdns-3.4.1.jar')
 }

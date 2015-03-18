@@ -8,7 +8,6 @@ import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.widget.TextView;
 
-import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
@@ -62,16 +61,17 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onStop() {
         doUnbindService();
-        // stopService(new Intent(this, RobotService.class));
-        super.onDestroy();
+        stopService(new Intent(this, RobotService_.class));
+        super.onStop();
     }
 
-    @AfterViews
-    protected void startService() {
+    @Override
+    protected void onStart() {
+        super.onStart();
         log("Car: Starting service");
-        // startService(new Intent(this, RobotService.class));
+        startService(new Intent(this, RobotService_.class));
         log("Car: doBindService");
         doBindService();
     }
