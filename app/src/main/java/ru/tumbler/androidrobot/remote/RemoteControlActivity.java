@@ -1,12 +1,16 @@
 package ru.tumbler.androidrobot.remote;
 
 import android.app.Activity;
+import android.os.Handler;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.widget.TextView;
 
+import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
 import com.koushikdutta.async.ByteBufferList;
 import com.koushikdutta.async.DataEmitter;
 import com.koushikdutta.async.callback.CompletedCallback;
@@ -14,17 +18,16 @@ import com.koushikdutta.async.callback.DataCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.WebSocket;
 
+import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.Background;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.Fullscreen;
-import org.androidannotations.annotations.SystemService;
 import org.androidannotations.annotations.Touch;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 import org.androidannotations.annotations.WindowFeature;
 
 import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,19 +43,100 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
         DataCallback, CompletedCallback, AsyncHttpClient.WebSocketConnectCallback, NetworkDiscovery.OnFoundListener {
 
     private static final String LOG_TAG = RemoteControlActivity.class.getName();
+
+    private final Handler mHandler = new Handler();
+
     @ViewById(R.id.surfaceView)
     DrawView mSurfaceView;
 
     @ViewById(R.id.textView)
     TextView mConsole;
 
+    @ViewById(R.id.graph)
+    GraphView mGraph;
+
+    LineGraphSeries<DataPoint> mAngleSeries;
+    LineGraphSeries<DataPoint> mSpeedSeries;
+    private Runnable mTimer2;
+    private double graph2LastXValue;
+
+    @AfterViews
+    void init() {
+        mAngleSeries = new LineGraphSeries<>();
+        mAngleSeries.setTitle("Angle");
+        for(int i=0;i<30;i++) {
+            mAngleSeries.appendData(new DataPoint((double) i, Math.random()), true, 30);
+        }
+        mSpeedSeries = new LineGraphSeries<>();
+        mSpeedSeries.setTitle("Speed");
+        for(int i=0;i<30;i++) {
+            mSpeedSeries.appendData(new DataPoint((double) i, Math.random()), true, 30);
+        }
+        mGraph.addSeries(mAngleSeries);
+        mGraph.addSeries(mSpeedSeries);
+        graph2LastXValue = 30;
+
+        mTimer2 = new Runnable() {
+            @Override
+            public void run() {
+                graph2LastXValue += 1d;
+                mAngleSeries.appendData(new DataPoint(graph2LastXValue, Math.random()), true, 30);
+                mSpeedSeries.appendData(new DataPoint(graph2LastXValue, Math.random()), true, 30);
+                mHandler.postDelayed(this, 200);
+            }
+        };
+        mHandler.postDelayed(mTimer2, 1000);
+    }
+
     private String mServiceUri;
     private WebSocket mWebSocket;
     private List<String> mBuffer = new ArrayList<String>();
     private NetworkDiscovery mNetworkDiscovery;
 
-    @Touch(R.id.surfaceView)
-    void onTouch(View v, MotionEvent event) {}
+    @Touch(R.id.overlay)
+    void onTouch(View v, MotionEvent event) {
+        int action = event.getAction();
+        if (action == MotionEvent.ACTION_MOVE) {
+            int[] location = new int[2];
+            v.getLocationOnScreen(location);
+            float screenX = event.getRawX();
+            float screenY = event.getRawY();
+
+            float viewX = screenX - location[0];
+            float viewY = screenY - location[1];
+
+            float viewL = v.getLeft();
+            float viewT = v.getTop();
+            float viewR = v.getRight();
+            float viewB = v.getBottom();
+            float relAngle = (viewX - viewL) / (viewR - viewL) - 0.5f;
+            float relSpeed = (viewY - viewB) / (viewT - viewB) - 0.3f;
+            int angle = (int)(relAngle * 1.2 * 10);
+            int speed = (int)((relSpeed > 0)?(relSpeed * 1.8 * 10):(relSpeed*4 * 10));
+            if (angle > 4) {
+                angle = 4;
+            } else if (angle < -4) {
+                angle = -4;
+            }
+            if (speed > 9) {
+                speed = 9;
+            } else if (speed < -9) {
+                speed = -9;
+            }
+            mSurfaceView.updateCursor(angle, speed, viewX, viewY);
+//            if (mPrevAngle!= angle) {
+//                sendAngleCommand(angle);
+//            }
+//            if (mPrevSpeed != speed) {
+//                sendSpeedCommand(speed);
+//            }
+        }
+        if (action == MotionEvent.ACTION_UP) {
+            mSurfaceView.updateCursor(0, 0, 0, 0);
+//            sendSpeedCommand(0);
+//            sendAngleCommand(0);
+        }
+    }
 
     @Override
     protected void onStop() {
