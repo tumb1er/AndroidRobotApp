@@ -81,7 +81,7 @@ public class RobotService extends Service implements IRobot {
 
     @Override
     public void onDestroy() {
-        Log.i(LOG_TAG, "onCreate");
+        Log.i(LOG_TAG, "onDestroy");
         stopServer();
         if (mNetworkDiscovery != null) {
             mNetworkDiscovery.reset();
@@ -92,6 +92,7 @@ public class RobotService extends Service implements IRobot {
     private void stopServer() {
         if (ws == null)
             return;
+        Log.i(LOG_TAG, "stopping WS");
         ws.stop();
     }
 
@@ -103,9 +104,7 @@ public class RobotService extends Service implements IRobot {
     }
 
     private void startServer() {
-        if (ws == null)
-            return;
-        ws.stop();
+        stopServer();
         ws.listen(WS_PORT);
         log("Car: WS server started");
     }

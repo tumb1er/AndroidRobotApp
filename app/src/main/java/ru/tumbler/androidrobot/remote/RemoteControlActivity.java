@@ -57,8 +57,11 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
 
     LineGraphSeries<DataPoint> mAngleSeries;
     LineGraphSeries<DataPoint> mSpeedSeries;
-    private Runnable mTimer2;
+    private Runnable graphUpdateTimer;
+    private Runnable pingTimer;
     private double graph2LastXValue;
+    private long lastPingSend;
+    private double mLatency = 0;
 
     @AfterViews
     void init() {
@@ -70,22 +73,33 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
         mSpeedSeries = new LineGraphSeries<>();
         mSpeedSeries.setTitle("Speed");
         for(int i=0;i<30;i++) {
-            mSpeedSeries.appendData(new DataPoint((double) i, Math.random()), true, 30);
-        }
-        mGraph.addSeries(mAngleSeries);
+            mSpeedSeries.appendData(new DataPoint((double) i, 0), true, 30);
+        };
+        // mGraph.addSeries(mAngleSeries);
         mGraph.addSeries(mSpeedSeries);
         graph2LastXValue = 30;
 
-        mTimer2 = new Runnable() {
+        graphUpdateTimer = new Runnable() {
             @Override
             public void run() {
                 graph2LastXValue += 1d;
                 mAngleSeries.appendData(new DataPoint(graph2LastXValue, Math.random()), true, 30);
-                mSpeedSeries.appendData(new DataPoint(graph2LastXValue, Math.random()), true, 30);
+                mSpeedSeries.appendData(new DataPoint(graph2LastXValue, mLatency), true, 30);
                 mHandler.postDelayed(this, 200);
             }
         };
-        mHandler.postDelayed(mTimer2, 1000);
+        mHandler.postDelayed(graphUpdateTimer, 1000);
+
+        pingTimer = new Runnable() {
+            @Override
+            public void run() {
+                lastPingSend = System.currentTimeMillis();
+                if (mWebSocket != null)
+                    mWebSocket.send("PING");
+                mHandler.postDelayed(this, 500);
+            }
+        };
+        mHandler.postDelayed(pingTimer, 1000);
     }
 
     private String mServiceUri;
@@ -175,6 +189,7 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
     }
 
     public void startWebSocket() {
+        Log.d(LOG_TAG, "Connecting to " + mServiceUri);
         AsyncHttpClient.getDefaultInstance().websocket(mServiceUri, null, this);
     }
 
@@ -193,6 +208,10 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
 
     @Override
     public void onStringAvailable(final String s) {
+        if ("PONG".equals(s)) {
+            mLatency = (System.currentTimeMillis() - lastPingSend) / 2000.0d;
+            return;
+        }
         log(s);
     }
 
@@ -204,14 +223,18 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
     @Override
     public void onCompleted(Exception ex) {
         log("WS closed");
+        mLatency = 0;
         mWebSocket = null;
     }
 
     @Override
     public void onCompleted(Exception ex, WebSocket webSocket) {
+        log("WD Suddenly closed");
         if (ex != null) {
             ex.printStackTrace();
-            if (mWebSocket != null) {
+            if (mWebSocket != null)
+            {
+                mLatency = 0;
                 mWebSocket.close();
                 mWebSocket = null;
             }

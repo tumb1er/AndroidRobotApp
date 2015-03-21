@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.widget.TextView;
 
 import org.androidannotations.annotations.EActivity;
@@ -19,6 +20,7 @@ import ru.tumbler.androidrobot.service.RobotService_;
 @EActivity(R.layout.activity_car)
 public class CarActivity extends ActionBarActivity implements RobotService.LogListener {
 
+    private static final String LOG_TAG = CarActivity.class.getName();
     @ViewById(R.id.consoleText)
     TextView mConsole;
     private boolean mIsBound;
@@ -62,9 +64,16 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
 
     @Override
     protected void onStop() {
-        doUnbindService();
-        stopService(new Intent(this, RobotService_.class));
+        Log.d(LOG_TAG, "onStop");
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d(LOG_TAG, "onDestroy");
+//        doUnbindService();
+//        stopService(new Intent(this, RobotService_.class));
+        super.onDestroy();
     }
 
     @Override

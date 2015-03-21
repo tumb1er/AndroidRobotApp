@@ -11,6 +11,7 @@ import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 
 public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback, CompletedCallback, WebSocket.StringCallback, DataCallback {
+    private static final String LOG_TAG = RobotWebSocket.class.getName();
     private WebSocket mWebSocket = null;
     private IRobot mRobot = null;
 
@@ -56,9 +57,11 @@ public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback,
 
     @Override
     public void onStringAvailable(String s) {
-        if ("Hello Server".equals(s)) {
-            mWebSocket.send("Welcome Client!");
+        if ("PING".equals(s)) {
+            mWebSocket.send("PONG");
             return;
+        } else {
+            Log.d(LOG_TAG, s);
         }
         String result = mRobot.send(s);
         if (result != null)
