@@ -70,6 +70,29 @@ public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback,
 
     @Override
     public void onDataAvailable(DataEmitter emitter, ByteBufferList bb) {
+        byte cmd = bb.get();
+        switch (cmd){
+            case 11:
+                int angle = (int) bb.get();
+                saveAngle(angle);
+                mWebSocket.send("Angle " + String.valueOf(angle));
+                break;
+            case 12:
+                int speed = (int) bb.get();
+                saveSpeed(speed);
+                mWebSocket.send("Speed " + String.valueOf(speed));
+                break;
+            default:
+                mWebSocket.send("Unknown");
+        }
         bb.recycle();
+    }
+
+    private void saveSpeed(int speed) {
+
+    }
+
+    private void saveAngle(int angle) {
+
     }
 }

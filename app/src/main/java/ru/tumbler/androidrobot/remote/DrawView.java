@@ -33,7 +33,7 @@ public class DrawView extends SurfaceView implements SurfaceHolder.Callback {
     public void updateZero(float w, float h) {
         canvasW = w;
         canvasH = h;
-        zeroY = (float)(canvasH * 0.7);
+        zeroY = h / 2;
         zeroX = w / 2;
     }
 

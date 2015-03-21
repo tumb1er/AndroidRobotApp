@@ -62,6 +62,8 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
     private double graph2LastXValue;
     private long lastPingSend;
     private double mLatency = 0;
+    private int mPrevAngle;
+    private int mPrevSpeed;
 
     @AfterViews
     void init() {
@@ -124,32 +126,50 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
             float viewR = v.getRight();
             float viewB = v.getBottom();
             float relAngle = (viewX - viewL) / (viewR - viewL) - 0.5f;
-            float relSpeed = (viewY - viewB) / (viewT - viewB) - 0.3f;
-            int angle = (int)(relAngle * 1.2 * 10);
-            int speed = (int)((relSpeed > 0)?(relSpeed * 1.8 * 10):(relSpeed*4 * 10));
-            if (angle > 4) {
-                angle = 4;
-            } else if (angle < -4) {
-                angle = -4;
+            float relSpeed = (viewY - viewB) / (viewT - viewB) - 0.5f;
+            int angle = (int)(relAngle * 127);
+            int speed = (int)(relSpeed * 127);
+            if (angle > 127) {
+                angle = 127;
+            } else if (angle < -127) {
+                angle = -127;
             }
-            if (speed > 9) {
-                speed = 9;
-            } else if (speed < -9) {
-                speed = -9;
+            if (speed > 127) {
+                speed = 127;
+            } else if (speed < -127) {
+                speed = -127;
             }
             mSurfaceView.updateCursor(angle, speed, viewX, viewY);
-//            if (mPrevAngle!= angle) {
-//                sendAngleCommand(angle);
-//            }
-//            if (mPrevSpeed != speed) {
-//                sendSpeedCommand(speed);
-//            }
+            if (mPrevAngle!= angle) {
+                sendAngleCommand(angle);
+            }
+            if (mPrevSpeed != speed) {
+                sendSpeedCommand(speed);
+            }
         }
         if (action == MotionEvent.ACTION_UP) {
             mSurfaceView.updateCursor(0, 0, 0, 0);
-//            sendSpeedCommand(0);
-//            sendAngleCommand(0);
+            sendSpeedCommand(0);
+            sendAngleCommand(0);
         }
+    }
+
+    private void sendAngleCommand(int angle) {
+        if (mWebSocket == null)
+            return;
+        byte[] cmd = new byte[2];
+        cmd[0] = 11;
+        cmd[1] = (byte)angle;
+        mWebSocket.send(cmd);
+    }
+
+    private void sendSpeedCommand(int speed) {
+        if (mWebSocket == null)
+            return;
+        byte[] cmd = new byte[2];
+        cmd[0] = 12;
+        cmd[1] = (byte)speed;
+        mWebSocket.send(cmd);
     }
 
     @Override
