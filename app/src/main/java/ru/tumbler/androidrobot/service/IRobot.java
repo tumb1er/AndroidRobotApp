@@ -5,4 +5,6 @@ package ru.tumbler.androidrobot.service;
  */
 public interface IRobot {
     String send(String command);
+
+    void log(String msg);
 }

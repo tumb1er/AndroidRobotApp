@@ -4,19 +4,29 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.widget.TextView;
 
+import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.EActivity;
+import org.androidannotations.annotations.OptionsItem;
+import org.androidannotations.annotations.OptionsMenu;
+import org.androidannotations.annotations.OptionsMenuItem;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import ru.tumbler.androidrobot.service.RobotService;
 import ru.tumbler.androidrobot.service.RobotService_;
 
 
+@OptionsMenu(R.menu.menu_car)
 @EActivity(R.layout.activity_car)
 public class CarActivity extends ActionBarActivity implements RobotService.LogListener {
 
@@ -24,17 +34,33 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
     @ViewById(R.id.consoleText)
     TextView mConsole;
     private boolean mIsBound;
+    private List<String> mBuffer = new ArrayList<String>();
 
     @UiThread
     public void log(String message) {
-        if (mConsole == null)
-            return;
-        mConsole.append(message);
-        if (!message.endsWith("\n"))
-            mConsole.append("\n");
+       updateReceivedData(message);
+    }
+
+    @AfterViews
+    void init() {
+        mConsole.setMovementMethod(new ScrollingMovementMethod());
     }
 
     private RobotService mBoundService;
+
+    private void updateReceivedData(String data) {
+        if (mBuffer.size() == 50)
+            mBuffer.remove(0);
+        mBuffer.add(data);
+
+        StringBuilder builder = new StringBuilder();
+        for (String s: mBuffer) {
+            builder.append(s);
+            builder.append('\n');
+        }
+        mConsole.setText(builder.toString());
+    }
+
 
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -56,6 +82,7 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
 
     void doUnbindService() {
         if (mIsBound) {
+            log("Car: Unbinding service");
             // Detach our existing connection.
             unbindService(mConnection);
             mIsBound = false;
@@ -71,9 +98,16 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
     @Override
     protected void onDestroy() {
         Log.d(LOG_TAG, "onDestroy");
-//        doUnbindService();
-//        stopService(new Intent(this, RobotService_.class));
+        // stopService();
+
         super.onDestroy();
+    }
+
+    @OptionsItem(R.id.action_stop)
+    protected void stopService() {
+                doUnbindService();
+        log("Car: stopping service");
+        stopService(new Intent(this, RobotService_.class));
     }
 
     @Override

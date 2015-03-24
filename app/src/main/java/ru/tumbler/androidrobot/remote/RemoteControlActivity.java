@@ -3,6 +3,7 @@ package ru.tumbler.androidrobot.remote;
 import android.app.Activity;
 import android.os.Handler;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
@@ -29,7 +30,9 @@ import org.androidannotations.annotations.WindowFeature;
 
 import java.net.Inet4Address;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.jmdns.ServiceInfo;
 
@@ -64,6 +67,8 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
     private double mLatency = 0;
     private int mPrevAngle;
     private int mPrevSpeed;
+    private Map<Integer, Byte[]> mPendingCommands = new HashMap<Integer, Byte[]>();
+    private Runnable mSyncTask;
 
     @AfterViews
     void init() {
@@ -157,24 +162,61 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
     private void sendAngleCommand(int angle) {
         if (mWebSocket == null)
             return;
-        byte[] cmd = new byte[2];
+        Byte[] cmd = new Byte[2];
         cmd[0] = 11;
         cmd[1] = (byte)angle;
-        mWebSocket.send(cmd);
+        mPrevAngle = angle;
+        mPendingCommands.put(11, cmd);
+        sync();
     }
 
     private void sendSpeedCommand(int speed) {
         if (mWebSocket == null)
             return;
-        byte[] cmd = new byte[2];
+        Byte[] cmd = new Byte[2];
         cmd[0] = 12;
         cmd[1] = (byte)speed;
-        mWebSocket.send(cmd);
+        mPendingCommands.put(12, cmd);
+        mPrevSpeed = speed;
+        sync();
+    }
+
+    synchronized void sync() {
+        if (mSyncTask != null) return;
+        mSyncTask = new Runnable() {
+            @Override
+            public void run() {
+                doSend();
+                mSyncTask = null;
+            }
+        };
+        mHandler.postDelayed(mSyncTask, 100);
+    }
+
+    private byte[] toPrimitives(Byte[] oBytes)
+    {
+
+        byte[] bytes = new byte[oBytes.length];
+        for(int i = 0; i < oBytes.length; i++){
+            bytes[i] = oBytes[i];
+        }
+        return bytes;
+
+    }
+
+    private synchronized void doSend() {
+        for(Map.Entry<Integer, Byte[]> entry: mPendingCommands.entrySet()) {
+            Byte[] value = entry.getValue();
+            mWebSocket.send(toPrimitives(value));
+        }
+        mPendingCommands.clear();
     }
 
     @Override
     protected void onStop() {
         stopDiscovery();
+        mHandler.removeCallbacks(graphUpdateTimer);
+        mHandler.removeCallbacks(pingTimer);
         super.onStop();
     }
 

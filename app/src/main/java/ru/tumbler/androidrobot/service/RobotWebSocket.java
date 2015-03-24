@@ -76,11 +76,13 @@ public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback,
                 int angle = (int) bb.get();
                 saveAngle(angle);
                 mWebSocket.send("Angle " + String.valueOf(angle));
+                mRobot.log("Angle " + String.valueOf(angle));
                 break;
             case 12:
                 int speed = (int) bb.get();
                 saveSpeed(speed);
                 mWebSocket.send("Speed " + String.valueOf(speed));
+                mRobot.log("Speed " + String.valueOf(speed));
                 break;
             default:
                 mWebSocket.send("Unknown");

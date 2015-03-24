@@ -65,7 +65,7 @@ public class RobotService extends Service implements IRobot {
             log("Service: listening " + mNetworkDiscovery.getServerInfo());
     }
 
-    void log(String message) {
+    public void log(String message) {
         Log.d(LOG_TAG, message);
         if (mLogListener!=null)
             mLogListener.log("Service: " + message);
@@ -84,6 +84,7 @@ public class RobotService extends Service implements IRobot {
         Log.i(LOG_TAG, "onDestroy");
         stopServer();
         if (mNetworkDiscovery != null) {
+
             mNetworkDiscovery.reset();
         }
         super.onDestroy();
