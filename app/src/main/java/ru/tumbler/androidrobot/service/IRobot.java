@@ -7,4 +7,8 @@ public interface IRobot {
     String send(String command);
 
     void log(String msg);
+
+    void setSpeed(int speed);
+
+    void setAngle(int angle);
 }

@@ -91,10 +91,11 @@ public class RobotWebSocket implements AsyncHttpServer.WebSocketRequestCallback,
     }
 
     private void saveSpeed(int speed) {
+        mRobot.setSpeed(speed);
 
     }
 
     private void saveAngle(int angle) {
-
+        mRobot.setAngle(angle);
     }
 }

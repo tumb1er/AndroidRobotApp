@@ -17,6 +17,7 @@ import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.OptionsItem;
 import org.androidannotations.annotations.OptionsMenu;
+import org.androidannotations.annotations.Receiver;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 
@@ -36,36 +37,28 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
     TextView mConsole;
     private boolean mIsBound;
     private List<String> mBuffer = new ArrayList<String>();
-    private BroadcastReceiver mDetachReceiver;
 
     @UiThread
     public void log(String message) {
        updateReceivedData(message);
     }
 
+    @Receiver(actions=UsbManager.ACTION_USB_DEVICE_ATTACHED)
+    protected void onUsbAttached() {
+        log("Car: USB device attached");
+        if (mBoundService != null)
+            mBoundService.tryConnectUsb();
+    }
+
+    @Receiver(actions=UsbManager.ACTION_USB_DEVICE_DETACHED)
+    protected void onUsbDetached() {
+        log("Car: USB device detached");
+        if (mBoundService != null)
+            mBoundService.tryDisconnectUsb();
+    }
     @AfterViews
     void init() {
-
         mConsole.setMovementMethod(new ScrollingMovementMethod());
-
-        mDetachReceiver = new BroadcastReceiver() {
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
-                    log("Car: USB device attached");
-                    if (mBoundService != null)
-                        mBoundService.tryConnectUsb();
-                } else if (intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_DETACHED)) {
-                    log("Car: USB device attached");
-                    if (mBoundService != null)
-                        mBoundService.tryDisconnectUsb();
-                }
-            }
-        };
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        registerReceiver(mDetachReceiver, filter);
     }
 
     private RobotService mBoundService;
