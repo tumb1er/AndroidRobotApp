@@ -15,6 +15,8 @@
         android:required="true"
         android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <uses-feature android:name="android.hardware.usb.host" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -31,20 +33,14 @@
         </activity>
         <activity
             android:name=".CarActivity_"
-            android:label="@string/title_activity_car" >
+            android:label="@string/title_activity_car"
+            android:launchMode= "singleInstance">
         </activity>
 
         <service
             android:name=".service.RobotService_"
             android:enabled="true"
             android:exported="false" >
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/device_filter" />
         </service>
 
         <activity

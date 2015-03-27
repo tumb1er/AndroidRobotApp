@@ -28,6 +28,14 @@ public class RobotService extends Service implements IRobot {
     private final RobotWebSocketServer ws;
     private NetworkDiscovery mNetworkDiscovery;
 
+    public void tryConnectUsb() {
+        log("Service: Connecting to USB Device");
+    }
+
+    public void tryDisconnectUsb() {
+        log("Service: Disconnecting USB device");
+    }
+
     public interface LogListener {
         void log(String message);
     }

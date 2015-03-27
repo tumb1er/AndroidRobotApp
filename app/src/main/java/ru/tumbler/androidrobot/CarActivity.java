@@ -1,10 +1,12 @@
 package ru.tumbler.androidrobot;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.os.Build;
+import android.hardware.usb.UsbManager;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.text.method.ScrollingMovementMethod;
@@ -15,7 +17,6 @@ import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.OptionsItem;
 import org.androidannotations.annotations.OptionsMenu;
-import org.androidannotations.annotations.OptionsMenuItem;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 
@@ -35,6 +36,7 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
     TextView mConsole;
     private boolean mIsBound;
     private List<String> mBuffer = new ArrayList<String>();
+    private BroadcastReceiver mDetachReceiver;
 
     @UiThread
     public void log(String message) {
@@ -43,7 +45,27 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
 
     @AfterViews
     void init() {
+
         mConsole.setMovementMethod(new ScrollingMovementMethod());
+
+        mDetachReceiver = new BroadcastReceiver() {
+            public void onReceive(Context context, Intent intent) {
+                if (intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
+                    log("Car: USB device attached");
+                    if (mBoundService != null)
+                        mBoundService.tryConnectUsb();
+                } else if (intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_DETACHED)) {
+                    log("Car: USB device attached");
+                    if (mBoundService != null)
+                        mBoundService.tryDisconnectUsb();
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+        registerReceiver(mDetachReceiver, filter);
     }
 
     private RobotService mBoundService;
@@ -67,6 +89,7 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
             log("Car: Local service connected");
             mBoundService = ((RobotService.RobotBinder)service).getService();
             mBoundService.setLogListener(CarActivity.this);
+            mBoundService.tryConnectUsb();
         }
 
         public void onServiceDisconnected(ComponentName className) {
@@ -117,5 +140,11 @@ public class CarActivity extends ActionBarActivity implements RobotService.LogLi
         startService(new Intent(this, RobotService_.class));
         log("Car: doBindService");
         doBindService();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        log("Car: onNewIntent");
     }
 }
