@@ -1,12 +1,15 @@
 package ru.tumbler.androidrobot.remote;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
-import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.jjoe64.graphview.GraphView;
@@ -21,15 +24,21 @@ import com.koushikdutta.async.http.WebSocket;
 
 import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.Background;
+import org.androidannotations.annotations.Click;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.Fullscreen;
 import org.androidannotations.annotations.Touch;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 import org.androidannotations.annotations.WindowFeature;
+import org.androidannotations.annotations.sharedpreferences.Pref;
+import org.apache.http.conn.util.InetAddressUtils;
 
 import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,10 +67,20 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
     @ViewById(R.id.graph)
     GraphView mGraph;
 
+    @ViewById(R.id.connectBlock)
+    ViewGroup mConnectBlock;
+
+    @ViewById(R.id.ipAddressText)
+    EditText mIpAddressText;
+
+    @Pref
+    RCPrefs_ mPreferences;
+
     LineGraphSeries<DataPoint> mAngleSeries;
     LineGraphSeries<DataPoint> mSpeedSeries;
     private Runnable graphUpdateTimer;
     private Runnable pingTimer;
+    private Runnable mManualConnectCountdown;
     private double graph2LastXValue;
     private long lastPingSend;
     private double mLatency = 0;
@@ -72,6 +91,46 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
 
     @AfterViews
     void init() {
+        mConnectBlock.setVisibility(View.GONE);
+        initIpAddressText();
+
+        initGraphTimer();
+
+        initPingTimer();
+    }
+
+    private void initIpAddressText() {
+        String ipAddress = mPreferences.carIpAddress().get();
+        Log.d(LOG_TAG, "IPAddress: " + ipAddress);
+        if (ipAddress.isEmpty()) {
+            ipAddress = getIPAddress(true);
+            if (ipAddress.isEmpty()) {
+                mIpAddressText.setText("");
+                return;
+            }
+            String[] octets = ipAddress.split("\\.");
+            String template = String.format("%s.%s.%s.", octets[0], octets[1], octets[2]);
+            mIpAddressText.setText(template);
+        } else {
+            mIpAddressText.setText(ipAddress);
+        }
+
+    }
+
+    private void initPingTimer() {
+        pingTimer = new Runnable() {
+            @Override
+            public void run() {
+                lastPingSend = System.currentTimeMillis();
+                if (mWebSocket != null)
+                    mWebSocket.send("PING");
+                mHandler.postDelayed(this, 500);
+            }
+        };
+        mHandler.postDelayed(pingTimer, 1000);
+    }
+
+    private void initGraphTimer() {
         mAngleSeries = new LineGraphSeries<>();
         mAngleSeries.setTitle("Angle");
         for(int i=0;i<30;i++) {
@@ -81,7 +140,8 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
         mSpeedSeries.setTitle("Speed");
         for(int i=0;i<30;i++) {
             mSpeedSeries.appendData(new DataPoint((double) i, 0), true, 30);
-        };
+        }
+        ;
         // mGraph.addSeries(mAngleSeries);
         mGraph.addSeries(mSpeedSeries);
         graph2LastXValue = 30;
@@ -96,17 +156,6 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
             }
         };
         mHandler.postDelayed(graphUpdateTimer, 1000);
-
-        pingTimer = new Runnable() {
-            @Override
-            public void run() {
-                lastPingSend = System.currentTimeMillis();
-                if (mWebSocket != null)
-                    mWebSocket.send("PING");
-                mHandler.postDelayed(this, 500);
-            }
-        };
-        mHandler.postDelayed(pingTimer, 1000);
     }
 
     private String mServiceUri;
@@ -159,6 +208,19 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
         }
     }
 
+    @Click(R.id.buttonConnect)
+    void connectManually() {
+        String ipAddress = mIpAddressText.getText().toString();
+        mPreferences.carIpAddress().put(ipAddress);
+        mServiceUri = "http://" + ipAddress + ":8080/ws";
+        mConnectBlock.setVisibility(View.GONE);
+        InputMethodManager imm = (InputMethodManager)getSystemService(
+                Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(mIpAddressText.getWindowToken(), 0);
+        startWebSocket();
+
+    }
+
     private void sendAngleCommand(int angle) {
         if (mWebSocket == null)
             return;
@@ -204,6 +266,31 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
 
     }
 
+    private String getIPAddress(boolean useIPv4) {
+        try {
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface intf : interfaces) {
+                List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
+                for (InetAddress addr : addrs) {
+                    if (!addr.isLoopbackAddress()) {
+                        String sAddr = addr.getHostAddress().toUpperCase();
+                        boolean isIPv4 = InetAddressUtils.isIPv4Address(sAddr);
+                        if (useIPv4) {
+                            if (isIPv4)
+                                return sAddr;
+                        } else {
+                            if (!isIPv4) {
+                                int delim = sAddr.indexOf('%'); // drop ip6 port suffix
+                                return delim<0 ? sAddr : sAddr.substring(0, delim);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) { } // for now eat exceptions
+        return "";
+    }
+
     private synchronized void doSend() {
         for(Map.Entry<Integer, Byte[]> entry: mPendingCommands.entrySet()) {
             Byte[] value = entry.getValue();
@@ -230,7 +317,22 @@ public class RemoteControlActivity extends Activity implements WebSocket.StringC
         log("startDiscovery");
         stopDiscovery();
         discoverServices();
+        startManualCountdown();
         log("discovery started async");
+    }
+
+    private void startManualCountdown() {
+        mManualConnectCountdown = new Runnable() {
+
+            @Override
+            public void run() {
+                if (mServiceUri != null)
+                    return;
+                mConnectBlock.setVisibility(View.VISIBLE);
+            }
+        };
+
+        mHandler.postDelayed(mManualConnectCountdown, 3000);
     }
 
     @Background

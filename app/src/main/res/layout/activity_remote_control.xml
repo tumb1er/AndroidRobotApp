@@ -7,9 +7,7 @@
     <ru.tumbler.androidrobot.remote.DrawView
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:id="@+id/surfaceView"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true" />
+        android:id="@+id/surfaceView" />
 
     <TextView android:text="@string/hello_world"
         android:layout_width="fill_parent"
@@ -31,5 +29,29 @@
         android:id="@+id/graph"
         android:layout_alignParentBottom="true"
         android:background="@android:color/transparent" />
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:weightSum="1"
+        android:background="@android:color/darker_gray"
+        android:id="@+id/connectBlock">
+
+        <EditText
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/ipAddressText"
+            android:inputType="number"
+            android:layout_weight="1" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/connect"
+            android:id="@+id/buttonConnect" />
+    </LinearLayout>
 
 </RelativeLayout>
